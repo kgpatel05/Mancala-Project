@@ -83,6 +83,14 @@ def minimax(state: GameState, depth: int, alpha: float, beta: float, maximizing_
         return min_eval
 
 def get_valid_moves(state: GameState) -> list[int]:
+    valid_moves = []
+    for i in range(len(state.board[state.current_player - 1])):
+        if state.board[state.current_player - 1][i] != 0:
+            valid_moves.append(i + 1)
+
+    return valid_moves
+
+def simulate_pie(state: GameState, player: int) -> GameState:
     pass
 
 def simulate_move(state: GameState, move: int) -> GameState:
