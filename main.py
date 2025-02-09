@@ -23,6 +23,9 @@ class GameState:
         print("Current Player:", self.current_player)
         print("Turn Number:", self.turn_number)
 
+    def duplicate(self):
+        return GameState(self.board[0].copy(), self.board[1].copy(), self.stores[0], self.stores[1], self.turn_number, self.current_player)
+
 
 def process_input(input_str: str) -> GameState:
     tokens = input_str.split()
@@ -91,6 +94,14 @@ def get_valid_moves(state: GameState) -> list[int]:
     return valid_moves
 
 def simulate_pie(state: GameState, player: int) -> GameState:
+    new_p1_pits = state.board[1].copy()
+    new_p2_pits = state.board[0].copy()
+    new_p1_store = state.stores[1]
+    new_p2_store = state.stores[0]
+    new_turn_number = state.turn_number + 1
+    new_current_player = 1
+
+    return GameState(new_p1_pits, new_p2_pits, new_p1_store, new_p2_store, new_turn_number, new_current_player)
     pass
 
 def simulate_move(state: GameState, move: int) -> GameState:
@@ -126,12 +137,18 @@ def simulate_move(state: GameState, move: int) -> GameState:
     return GameState(new_p1_pits, new_p2_pits, new_stores[0], new_stores[1], state.turn_number + 1, 3 - state.current_player)
 
 def evaluate_state(state: GameState) -> float:
-    #This function is the heuristic function that evaluates the state of the game
-    pass
+    #our heuristic function
+    if(state.current_player == 1):
+        return state.stores[0] - state.stores[1]
+    else:
+        return state.stores[1] - state.stores[0]
 
 def is_terminal(state: GameState) -> bool:
     #checks if the game is over
-    pass
+    if np.sum(state.board[0]) == 0 or np.sum(state.board[1]) == 0:
+        return True
+    else:
+        return False
 
 
     
