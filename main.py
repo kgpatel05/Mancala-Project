@@ -86,7 +86,36 @@ def get_valid_moves(state: GameState) -> list[int]:
     pass
 
 def simulate_move(state: GameState, move: int) -> GameState:
-    pass
+    if move == len(state.board[0]) + 1:
+        return simulate_pie(state, state.current_player)
+
+    new_p1_pits = state.board[0].copy()
+    new_p2_pits = state.board[1].copy()
+    new_stores = state.stores.copy()
+
+    pits = [new_p1_pits, new_p2_pits]
+    player_index = 0 if state.current_player == 1 else 1
+    opponent_index = 1 - player_index
+    pit_index = move - 1
+    stones = pits[player_index][pit_index]
+    pits[player_index][pit_index] = 0
+    index = pit_index
+
+    while stones > 0:
+        index = (index + 1) % (2 * len(pits[0]) + 2)
+        if index == len(pits[0]) and player_index == 1:
+            continue
+        if index == 2 * len(pits[0]) + 1 and player_index == 0:
+            continue
+        if index == len(pits[0]):
+            new_stores[0] += 1
+        elif index == 2 * len(pits[0]) + 1:
+            new_stores[1] += 1
+        else:
+            pits[(index // len(pits[0])) % 2][index % len(pits[0])] += 1
+        stones -= 1
+
+    return GameState(new_p1_pits, new_p2_pits, new_stores[0], new_stores[1], state.turn_number + 1, 3 - state.current_player)
 
 def evaluate_state(state: GameState) -> float:
     #This function is the heuristic function that evaluates the state of the game
