@@ -47,7 +47,32 @@ def process_input(input_str: str) -> GameState:
     return GameState(p1_pits, p2_pits, p1_store, p2_store, turn, currentplayer)
 
 def nextmove(game_state: GameState) -> int:
-    pass
+    """
+    Determines the best move for the current player using Minimax with Alpha-Beta pruning.
+    Returns the pit index of the best move.
+    """
+    best_move = None
+    best_value = float("-inf") if game_state.current_player == 1 else float("inf")
+    alpha, beta = float("-inf"), float("inf")
+    depth = 5 #TODO: ADJUST ON THE BASIS OF TIME FOR COMPUTATION
+
+    for move in get_valid_moves(game_state):
+        new_state = simulate_move(game_state, move)
+        move_value = minimax(new_state, depth, alpha, beta, maximizing_player=(game_state.current_player == 1))
+
+        if game_state.current_player == 1: # Maximizing player (Player 1)
+            if move_value > best_value:
+                best_value = move_value
+                best_move = move
+            alpha = max(alpha, best_value)
+        else:  # Minimizing player (Player 2)
+            if move_value < best_value:
+                best_value = move_value
+                best_move = move
+            beta = min(beta, best_value)
+
+    return best_move
+
 
 def minimax(state: GameState, depth: int, alpha: float, beta: float, maximizing_player: bool) -> float:
     '''
@@ -86,12 +111,8 @@ def minimax(state: GameState, depth: int, alpha: float, beta: float, maximizing_
         return min_eval
 
 def get_valid_moves(state: GameState) -> list[int]:
-    valid_moves = []
-    for i in range(len(state.board[state.current_player - 1])):
-        if state.board[state.current_player - 1][i] != 0:
-            valid_moves.append(i + 1)
-
-    return valid_moves
+    current_pits = state.board[state.current_player - 1]
+    return [i for i in range(len(current_pits)) if current_pits[i] > 0]
 
 def simulate_pie(state: GameState, player: int) -> GameState:
     new_p1_pits = state.board[1].copy()
@@ -102,7 +123,6 @@ def simulate_pie(state: GameState, player: int) -> GameState:
     new_current_player = 1
 
     return GameState(new_p1_pits, new_p2_pits, new_p1_store, new_p2_store, new_turn_number, new_current_player)
-    pass
 
 def simulate_move(state: GameState, move: int) -> GameState:
     if move == len(state.board[0]) + 1:
