@@ -134,27 +134,60 @@ def simulate_move(state: GameState, move: int) -> GameState:
 
     pits = [new_p1_pits, new_p2_pits]
     player_index = 0 if state.current_player == 1 else 1
-    opponent_index = 1 - player_index
     pit_index = move - 1
     stones = pits[player_index][pit_index]
     pits[player_index][pit_index] = 0
-    index = pit_index
+
+    # Increase index by +7 for Player 2 so stones are distributed properly
+    index = pit_index if player_index == 0 else pit_index + 7
 
     while stones > 0:
-        index = (index + 1) % (2 * len(pits[0]) + 2)
-        if index == len(pits[0]) and player_index == 1:
-            continue
-        if index == 2 * len(pits[0]) + 1 and player_index == 0:
-            continue
-        if index == len(pits[0]):
-            new_stores[0] += 1
-        elif index == 2 * len(pits[0]) + 1:
-            new_stores[1] += 1
-        else:
-            pits[(index // len(pits[0])) % 2][index % len(pits[0])] += 1
+        index = (index + 1) % 14  # Move counterclockwise through indices 0-13
+
+        # Skip the opponent's store
+        if (player_index == 0 and index == 13) or (player_index == 1 and index == 6):
+            index = (index + 1) % 14
+
+        # Place stones
+        if index < 6:  
+            pits[0][index] += 1  # Player 1's pits
+        elif index == 6:  
+            if player_index == 0:  # Player 1's store
+                new_stores[0] += 1
+        elif index < 13:  
+            pits[1][index - 7] += 1  # Player 2's pits
+        elif index == 13:  
+            if player_index == 1:  # Player 2's store
+                new_stores[1] += 1
+
         stones -= 1
 
-    return GameState(new_p1_pits, new_p2_pits, new_stores[0], new_stores[1], state.turn_number + 1, 3 - state.current_player)
+    # Stone Captures: If last stone landed in an empty pit on current player's side
+    if player_index == 0 and index < 6 and pits[0][index] == 1:
+        opposite_index = 12 - index
+        if pits[1][opposite_index - 7] > 0:
+            new_stores[0] += pits[1][opposite_index - 7] + pits[0][index]
+            pits[1][opposite_index - 7] = 0
+            pits[0][index] = 0
+            print("Player 1 has captured stones from Player 2")
+
+    elif player_index == 1 and 7 <= index < 13 and pits[1][index - 7] == 1:
+        opposite_index = 12 - index
+        if pits[0][opposite_index - 7] > 0:
+           new_stores[1] += pits[0][opposite_index - 7] + pits[1][index - 7]
+           pits[0][opposite_index - 7] = 0
+           pits[1][index - 7] = 0
+           print("Player 2 has captured stones from Plkayer 1")
+
+    #Check if last stone landed in current player's store
+    if (player_index == 0 and index == 6) or (player_index == 1 and index == 13):
+        next_player = state.current_player
+        print("Player granted additional turn")
+    else:
+        next_player = 3 - state.current_player
+    
+
+    return GameState(new_p1_pits, new_p2_pits, new_stores[0], new_stores[1], state.turn_number + 1, next_player)
 
 def evaluate_state(state: GameState) -> float:
     #our heuristic function
@@ -182,3 +215,34 @@ if __name__ == "__main__":
     end_time = time.time()
     
     print(f"Execution time: {end_time - start_time} seconds")
+    
+    
+'''
+
+USED FOR TESTING
+
+if __name__ == "__main__":
+    # Test Case: Player 1 selects pit 6
+    initial_state = GameState(
+        np.array([4, 3, 4, 6, 4, 9]),  # Player 1 pits
+        np.array([4, 4, 4, 4, 4, 8]),  # Player 2 pits
+        0,  # Player 1 store
+        0,  # Player 2 store
+        1,  # Turn number
+        1   # Current player (Player 1)
+    )
+
+    print("Before move:")
+    initial_state.display_board()
+
+    # Player 1 chooses pit 6 (index 5)
+    new_state = simulate_move(initial_state, 3)
+    #new_state2 = simulate_move(new_state, 6)
+
+
+    print("\nAfter move:")
+    new_state.display_board()
+    new_state2 = simulate_move(new_state, 6)
+    new_state2.display_board()
+'''
+    
