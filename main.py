@@ -36,7 +36,13 @@ def nextmove(game_state: GameState) -> str:
     best_value = float("-inf") if game_state.current_player == 1 else float("inf")
     alpha, beta = float("-inf"), float("inf")
     
-    depth = 3 if sum(game_state.board[0]) + sum(game_state.board[1]) > 15 else 6
+    total_stones = sum(game_state.board[0]) + sum(game_state.board[1])
+    if total_stones > 20:
+        depth = 6 # Early game
+    elif total_stones > 10:
+        depth = 8  # Mid game
+    else:
+        depth = 10  # End game
     
     for move in get_valid_moves(game_state):
         new_state = simulate_move(game_state, move)
@@ -120,7 +126,15 @@ def simulate_move(state: GameState, move: int) -> GameState:
 
 
 def evaluate_state(state: GameState) -> float:
-    return state.stores[0] - state.stores[1] + sum(state.board[state.current_player - 1]) - sum(state.board[2 - state.current_player])
+    score = (state.stores[0] - state.stores[1]) * 5  # Increase weight of store difference
+    score += sum(state.board[state.current_player - 1]) - sum(state.board[2 - state.current_player])
+    score += sum(1 for pit in state.board[state.current_player - 1] if pit == 1) * 3  # Reward capture opportunities
+    score += sum(1 for pit in state.board[state.current_player - 1] if pit > 3) * 2  # Reward maintaining pits with more stones
+    score -= sum(1 for pit in state.board[2 - state.current_player] if pit == 1) * 3  # Penalize opponent's capture opportunities
+    score -= sum(1 for pit in state.board[2 - state.current_player] if pit > 3) * 2  # Penalize opponent's strong positions
+    score += 10 if state.current_player == 1 and state.stores[0] > state.stores[1] else 0  # Encourage leading
+    score -= 10 if state.current_player == 2 and state.stores[1] > state.stores[0] else 0  # Discourage trailing
+    return score
 
 
 def is_terminal(state: GameState) -> bool:
