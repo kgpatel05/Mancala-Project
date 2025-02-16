@@ -35,14 +35,11 @@ def process_input(input_str: str) -> GameState:
 
 def nextmove(game_state: GameState) -> str:
     """
-    Top-level function. It clears the transposition table,
-    uses the PIE rule when appropriate, and calls negamax from the root.
-    We determine root_player from the gamestate so that our search is always
-    from the perspective of the player whose turn it is.
+    Top-level function. Clears the transposition table, applies the PIE rule when needed,
+    and calls negamax from the perspective of the player whose turn it is.
     """
     transposition_table.clear()
     
-    # Handle PIE for player2's first turn.
     if game_state.current_player == 2 and game_state.turn_number == 1:
         return "PIE"
     
@@ -55,17 +52,17 @@ def nextmove(game_state: GameState) -> str:
     if total_stones > 20:
         depth = 6  # Early game
     elif total_stones > 10:
-        depth = 8  # Mid game
+        depth = 7  # Mid game
     else:
-        depth = 10 # End game
-    
+        depth = 12 # End game
+
     moves = get_valid_moves(game_state)
-    # Order moves using a shallow evaluation (from the root player's perspective)
+    # Order moves using a shallow evaluation from the root player's perspective.
     moves.sort(key=lambda m: evaluate_for_root(simulate_move(game_state, m), root_player), reverse=True)
     
     for move in moves:
         child_state = simulate_move(game_state, move)
-        # Negamax call: we use the negative of the child evaluation.
+        # Negamax returns values from the root player's perspective.
         value = -negamax(child_state, depth - 1, -beta, -alpha, root_player)
         if value > best_value:
             best_value = value
@@ -87,7 +84,6 @@ def negamax(state: GameState, depth: int, alpha: float, beta: float, root_player
     
     if depth == 0 or is_terminal(state):
         val = evaluate_state(state)
-        # If the state is from the opponent's perspective relative to root_player, flip sign.
         if state.current_player != root_player:
             val = -val
         transposition_table[cache_key] = val
@@ -95,7 +91,6 @@ def negamax(state: GameState, depth: int, alpha: float, beta: float, root_player
 
     max_val = float("-inf")
     moves = get_valid_moves(state)
-    # Order moves at this node
     moves.sort(key=lambda m: evaluate_for_root(simulate_move(state, m), root_player), reverse=True)
     
     for move in moves:
@@ -142,26 +137,27 @@ def simulate_move(state: GameState, move: int) -> GameState:
             new_stores[1] += 1
         stones -= 1
     
-    # If the last stone lands in the current player's store, that player goes again.
     if (player_index == 0 and pos == len(pits[0])) or (player_index == 1 and pos == total_positions - 1):
         next_player = state.current_player
     else:
         next_player = 1 if state.current_player == 2 else 2
     
-    return GameState(new_p1_pits, new_p2_pits, new_stores[0], new_stores[1], state.turn_number + 1, next_player)
+    return GameState(new_p1_pits, new_p2_pits, new_stores[0], new_stores[1],
+                     state.turn_number + 1, next_player)
 
 def is_terminal(state: GameState) -> bool:
     return np.sum(state.board[0]) == 0 or np.sum(state.board[1]) == 0
 
 def evaluate_state(state: GameState) -> float:
     """
-    This evaluation implements the Algorithm 4 style heuristic.
-    It computes various features from the current player's perspective.
+    Implements the Algorithm 4 style heuristic.
+    Evaluates from the perspective of the current player.
     """
     player = state.current_player
     opponent = 1 if player == 2 else 2
     p_idx = player - 1
     o_idx = opponent - 1
+    N = len(state.board[p_idx])
 
     # H1: Stones in leftmost pit
     H1 = state.board[p_idx][0]
@@ -171,34 +167,34 @@ def evaluate_state(state: GameState) -> float:
     H3 = np.count_nonzero(state.board[p_idx])
     # H4: Player's store seeds
     H4 = state.stores[p_idx]
-    # H5: 1 if the rightmost pit has stones, else 0
+    # H5: Indicator for rightmost pit having seeds
     H5 = 1 if state.board[p_idx][-1] > 0 else 0
     # H6: Negative of opponent's store
     H6 = -state.stores[o_idx]
-    # H7: 1 if the game is not terminal, else 0
-    H7 = 0 if is_terminal(state) else 1
-    # H8: Store difference (from current player's perspective)
+    # H7: Number of extra-turn opportunities (pits where seeds equal distance to store)
+    H7 = sum(1 for i in range(N) if state.board[p_idx][i] == (N - i))
+    # H8: Store difference (player's store minus opponent's store)
     H8 = state.stores[p_idx] - state.stores[o_idx]
-    # H9: If opponent's store >= 5, penalize:
+    # H9: Conditional penalty if opponent's store is strong
     H9 = 0
     if state.stores[o_idx] >= 5:
         H9 = -(state.stores[o_idx] * 1.5) - state.stores[p_idx]
-    # H10: If current player's store >= 5, reward:
+    # H10: Conditional bonus if player's store is strong
     H10 = 0
     if state.stores[p_idx] >= 5:
         H10 = (state.stores[p_idx] * 1.5) - state.stores[o_idx]
 
-    # Chosen weights (these remain our baseline; you can experiment further):
+    # Adjusted weights to emphasize stores and extra-turns:
     W1  = 0.5   # leftmost pit
-    W2  = 1.0   # total seeds on player's side
-    W3  = 1.0   # number of nonempty pits
-    W4  = 8.0   # player's store seeds
-    W5  = 0.5   # rightmost pit
-    W6  = 4.0   # negative of opponent's store
-    W7  = 2.0   # not terminal bonus
-    W8  = 10.0  # store difference
-    W9  = 3.0   # penalty for opponent's strong store (if >=5)
-    W10 = 3.0   # bonus for own strong store (if >=5)
+    W2  = 0.8   # total seeds on board (de-emphasized)
+    W3  = 0.8   # number of nonempty pits (de-emphasized)
+    W4  = 12.0  # player's store seeds (more important)
+    W5  = 0.5   # rightmost pit indicator
+    W6  = 6.0   # penalty for opponent's store
+    W7  = 3.0   # extra-turn opportunities
+    W8  = 15.0  # store difference (critical)
+    W9  = 4.0   # additional penalty for opponent being strong
+    W10 = 5.0   # bonus for own strong store
 
     score = (H1 * W1 + H2 * W2 + H3 * W3 + H4 * W4 + H5 * W5 +
              H6 * W6 + H7 * W7 + H8 * W8 + H9 * W9 + H10 * W10)
@@ -206,8 +202,7 @@ def evaluate_state(state: GameState) -> float:
 
 def evaluate_for_root(state: GameState, root_player: int) -> float:
     """
-    Helper function that returns the evaluation from the root player's perspective.
-    If the state's current player is not the root, the sign is flipped.
+    Returns the evaluation from the perspective of the root player.
     """
     val = evaluate_state(state)
     return val if state.current_player == root_player else -val
