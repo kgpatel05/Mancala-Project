@@ -2,13 +2,10 @@ import numpy as np
 import sys
 import time
 
-########################################
-# GLOBAL TRANSPOSITION TABLE
-########################################
 transposition_table = {}
 
 # Set the time limit (in seconds) for computing a move.
-TIME_LIMIT = 0.95
+TIME_LIMIT = 0.90
 # Safety margin in seconds to prevent timeout.
 TIME_MARGIN = 0.01
 
