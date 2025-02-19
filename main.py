@@ -1,3 +1,8 @@
+'''
+Krish Patel (kpatel46@u.rochester.edu)
+Christopher DelGuercio (cdelguer@u.rochester.edu)
+Leo Liang (lliang11@u.rochester.edu)
+'''
 import numpy as np
 import sys
 import time
